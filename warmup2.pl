@@ -19,3 +19,20 @@ makeBinary(N, node(X, Y, N)):-
     M is N-1,
     makeBinary(M, X),
     makeBinary(M, Y).
+
+%e
+getChildren(_,_,0,[]).
+getChildren(M, NrChildren, Iter, [Head|Tail]) :-
+    Iter > 0,
+    NextIter is Iter-1,
+    makeTree(M, NrChildren, Head),
+    getChildren(M, NrChildren, NextIter, Tail)
+    .
+
+makeTree(0,_,leaf(0)).
+makeTree(N, NrChildren, node(Children, N)) :-
+    N > 0,
+    NrChildren > 0,
+    M is N-1,
+    getChildren(M, NrChildren, NrChildren, Children)
+    .
