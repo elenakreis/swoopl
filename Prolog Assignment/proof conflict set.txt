@@ -1,0 +1,3 @@
+For problem 2:
+The conflict set returned by the program is [a1,a2]. We want to check that this is indeed a conflict set. A conflict set is defined as a set of components that, if assumed to be working normally, imply an inconsistency with the observations. 
+The set [a1,a2] is indeed a conflict set because, if both a1 and a2 are assumed to be normal, then the output of a1 should be 0, which means that no matter the input2 of a2, its output should be 0 as well. But this contradicts the observation that out2 = 1, and therefore the set [a1,a2] is a conflict set.
