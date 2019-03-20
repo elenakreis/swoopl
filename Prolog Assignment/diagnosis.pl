@@ -5,6 +5,17 @@ and_gate(all X:(and(X) , ~ab(X) => (in1(X), in2(X) <=> out(X)))).
 or_gate( all X:(or(X)  , ~ab(X) => (in1(X) ; in2(X) <=> out(X)))).
 xor_gate(all X:(xor(X) , ~ab(X) => (out(X) <=> in1(X),~in2(X);~in1(X),in2(X)))).
 
+% This is the problem from the slides.
+problemSlides(SD, COMP, OBS):-
+  and_gate(AND),
+  or_gate(OR),
+  xor_gate(XOR),
+  SD = [AND, OR, XOR, and(a1), and(a2), or(o1), xor(x1), xor(x2),
+  out(x1)<=>in2(a2),out(x1)<=>in1(x2),out(a1)<=>in2(o1),out(a2)<=>in1(o1)],
+  COMP = [a1,a2,o1,x1,x2],
+  OBS = [in1(x1), ~in2(x1), in1(a2), in2(x2), in1(a1), ~in2(a1), out(x2), ~out(o1)]
+  .
+
 % Two unconnected AND gates with two inputs. It is observed that the
 % inputs are true and the outputs are false.
 problem1(SD, COMP, OBS) :-
