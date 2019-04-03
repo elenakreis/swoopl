@@ -19,3 +19,74 @@ makeHittingTree(_, Hn, node([], check, Hn)). % if tp fails go here
 makeHittingTree(SD, COMP, OBS, HT) :-
   makeHittingTree([SD,COMP,OBS], [], HT)
   .
+
+% -------------------------------------------------------------------------
+% Function for getting all hitting sets of a hitting tree
+gatherChildDiagnoses([], []).
+gatherChildDiagnoses([HeadC|TailC], D) :-
+  gatherDiagnoses(HeadC, HeadCD),
+  gatherChildDiagnoses(TailC, TailCD),
+  append(HeadCD, TailCD, D)
+  .
+
+gatherDiagnoses(node(_, check, Hn), [Hn]).
+gatherDiagnoses(node(Children, _, _), D) :-
+  gatherChildDiagnoses(Children, D)
+  .
+% -------------------------------------------------------------------------
+% This sorting function was taken from http://kti.ms.mff.cuni.cz/~bartak/prolog/sorting.html (Last accessed 03-04-2019) and adapted to sort according to list length. All credits go to Roman Barták.
+insert_sort(List,Sorted):-
+  i_sort(List,[],Sorted)
+  .
+i_sort([],Acc,Acc).
+i_sort([H|T],Acc,Sorted):-
+  insert(H,Acc,NAcc),
+  i_sort(T,NAcc,Sorted)
+  .
+
+insert(X,[Y|T],[Y|NT]):-
+  length(X, LenX),
+  length(Y, LenY),
+  LenX>LenY,
+  insert(X,T,NT)
+  .
+insert(X,[Y|T],[X,Y|T]):-
+  length(X, LenX),
+  length(Y, LenY),
+  LenX=<LenY.
+insert(X,[],[X]).
+
+
+isSuperset(_, []) :- false.
+isSuperset(D, [Head|Tail]) :-
+  subset(Head, D); % D is superset of Head
+  isSuperset(D, Tail)
+  .
+getMD([],[]).
+getMD([HeadD|TailD], MD):-
+  getMD(TailD, TailMD),
+  ( %if
+    isSuperset(HeadD, TailD)
+  ->
+    %then
+    MD = TailMD % Discard HeadD
+  ;
+    %else
+    MD = [HeadD|TailMD] % Keep HeadD
+  )
+  .
+
+getMinimalDiagnoses(D, MD) :-
+  insert_sort(D, DSort), % Sort by length of sublists
+  reverse(DSort, DSortReverse), % Put longest lists in front
+  getMD(DSortReverse, MD)
+  .
+
+% ------------------------------------------------------------------------
+% Main predicate that takes a diagnostic problem and returns the minimal diagnoses
+
+solveDP(SD, COMP, OBS, MD):-
+  makeHittingTree(SD, COMP, OBS, HT),
+  gatherDiagnoses(HT, D),
+  getMinimalDiagnoses(D, MD)
+  .
