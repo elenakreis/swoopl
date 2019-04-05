@@ -1,15 +1,14 @@
 :- [diagnosis].
 % Helper function for children.
-%%% getChildren(F,prevHn, Label, Children) unifies Children with the children of a node with set of edgelabels Hn.
+%%% getChildren(DP ,prevHn, Label, Children) unifies Children with the children of a node with set of edgelabels Hn.
 getChildren(_,_,[],[]).
 getChildren(DP, Hn, [Head|Tail], [HeadC|TailC]) :-
     makeHittingTree(DP, [Head|Hn] , HeadC),
     getChildren(DP, Hn, Tail, TailC)
     .
-% Generates a hitting tree HT from a set of conflict sets.
-% Using Hn as an additional parameter is not necessary (it could be done with pattern matching inside the node), but it is much more readible this way so we decided to stick with it.
-%%% makeHittingTree(F,Hn,Tree) unifies Tree with the hitting tree of F.
-makeHittingTree([SD, COMP, OBS], Hn, node(Children, S, Hn)) :- % node with list of Children, label S and list of edge labels Hn
+%%% makeHittingTree([SD, COMP, OBS], Hn, Tree) unifies Tree with the hitting tree of the diagnostic problem [SD, COMP, OBS].
+% Note: Using Hn as an additional parameter is not necessary (it could be done with pattern matching inside the node), but it is much more readible this way so we decided to stick with it.
+makeHittingTree([SD, COMP, OBS], Hn, node(Children, S, Hn)) :- % node: list of Children, label S and list of edge labels Hn
   tp(SD, COMP, OBS, Hn, S),
   getChildren([SD, COMP, OBS], Hn, S, Children)
   .
@@ -21,7 +20,7 @@ makeHittingTree(SD, COMP, OBS, HT) :-
   .
 
 % -------------------------------------------------------------------------
-% Function for getting all hitting sets of a hitting tree
+% Helper function to gather diagnoses from each child
 gatherChildDiagnoses([], []).
 gatherChildDiagnoses([HeadC|TailC], D) :-
   gatherDiagnoses(HeadC, HeadCD),
@@ -29,6 +28,7 @@ gatherChildDiagnoses([HeadC|TailC], D) :-
   append(HeadCD, TailCD, D)
   .
 
+% Function for getting all hitting sets of a hitting tree
 gatherDiagnoses(node(_, check, Hn), [Hn]).
 gatherDiagnoses(node(Children, _, _), D) :-
   gatherChildDiagnoses(Children, D)
@@ -56,12 +56,14 @@ insert(X,[Y|T],[X,Y|T]):-
   LenX=<LenY.
 insert(X,[],[X]).
 
-
-isSuperset(_, []) :- false.
+%---------------------------------------------------
+% isSuperset(Set, SetofSets) determines whether Set is a superset of any set in SetofSets
+~isSuperset(_, []).
 isSuperset(D, [Head|Tail]) :-
   subset(Head, D); % D is superset of Head
   isSuperset(D, Tail)
   .
+% getMD(D, MD). Helper function for getMinimalDiagnoses. Removes all supersets from D, when the sets in D are ordered by descending length
 getMD([],[]).
 getMD([HeadD|TailD], MD):-
   getMD(TailD, TailMD),
@@ -75,7 +77,8 @@ getMD([HeadD|TailD], MD):-
     MD = [HeadD|TailMD] % Keep HeadD
   )
   .
-
+% Removes all supersets of D to get MD.
+% Sorts the sets in D by length, and then reverses them to have them in descending order.
 getMinimalDiagnoses(D, MD) :-
   insert_sort(D, DSort), % Sort by length of sublists
   reverse(DSort, DSortReverse), % Put longest lists in front
@@ -83,8 +86,7 @@ getMinimalDiagnoses(D, MD) :-
   .
 
 % ------------------------------------------------------------------------
-% Main predicate that takes a diagnostic problem and returns the minimal diagnoses
-
+% Main predicate that takes a diagnostic problem and returns the minimal diagnoses MD
 solveDP(SD, COMP, OBS, MD):-
   makeHittingTree(SD, COMP, OBS, HT),
   gatherDiagnoses(HT, D),
