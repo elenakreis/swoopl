@@ -163,10 +163,21 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,[CurTheirHigh,CurMyHigh],SetO
 sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals) :-
 	sortSet(OtherDeals,ToBeSorted,CurBestDeal,SetOfSortedDeals).
 
+wrisk(MyWrisk, TheirWrisk) :-
+	myDeal([MyD1, MyD2]) &
+	theirDeal([TheirD1, TheirD2]) &
+	originalTask(OT) &
+	theirOriginalTask(TOT) &
+	computeUtility(MyD1, TOT, U_MyD1) &
+	computeUtility(MyD2, OT, U_MyD2) &
+	computeUtility(TheirD1, TOT, U_TheirD1) &
+	computeUtility(TheirD2, OT, U_TheirD2) &
+	MyWrisk = (U_MyD2 - U_TheirD2) / U_MyD2 & // CHANGE FOR AGENTS
+	TheirWrisk = (U_TheirD1 - U_MyD1) / U_TheirD1
+.
 /* Initial goals */
 //I hate the deal I have been given. I want a better one! Perhaps I can ask z_one...
 !getBetterDeal.
-
 
 
 
@@ -198,7 +209,50 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 	+theSetOfNegotiationDeals(SortedSet); //Remember the current negotiation deals.
 	!getBetterDeal.
 	
+
 +!getBetterDeal 
-	: true 
-	<- true
+	: not firstRoundFinished  // they haven't proposed a deal yet.
+	<- 
+	?theSetOfNegotiationDeals([BestDeal|Rest]);
+	.send(z_one, tell, theirDeal(BestDeal)); // send them our best deal
+	+myDeal(BestDeal);
+	+firstRoundFinished;
+	!getBetterDeal
+	.
+	
++!getBetterDeal 
+	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk
+	<- 
+	// flip coin
+	.print("flip coin");
+	!getBetterDeal
+	.
+	
++!getBetterDeal 
+	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk > TheirWrisk
+	<- 
+	// send same deal
+	.print("send same deal");
+	!getBetterDeal
+	.
+
+// Concede
+// FUNCTION NOT CHECKED
++!getBetterDeal 
+	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk < TheirWrisk
+	<- 
+	?theSetOfNegotiationDeals(NegotiationDeals);
+	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|_]);
+	// UPDATE negotiation deals here?????
+	//?sortSet(Deals, [NextBestDeal|_]); // sorting doesn't work... is it necessary?
+	.send(z_one, untell, theirDeal);
+	.send(z_one, tell, theirDeal(NextBestDeal));
+	!getBetterDeal
+	.
+	
++!getBetterDeal 
+	: true  
+	<- 
+	.wait({+theirDeal(D)}); 
+	!getBetterDeal
 	.
