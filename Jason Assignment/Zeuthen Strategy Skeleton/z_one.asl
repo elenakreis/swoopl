@@ -53,7 +53,7 @@ cost([d,f],27).
 cost([e,f],17).
 cost([b,c,d],21).
 cost([b,c,e],17).
-cost([b,c,f],17).
+cost([b,c,f],17). // this is wrong
 cost([b,d,e],26).
 cost([b,d,f],27).
 cost([b,e,f],17).
@@ -69,7 +69,7 @@ cost([c,d,e,f],27).
 cost([b,c,d,e,f],27).
 
 //I remember my task set. During experiments, make sure to adjust the task.
-originalTask([d,e]).
+originalTask([b,c,f]).
 
 //Checking if two task sets are indeed valid re-distribution. This code requires
 // having the total task set (b,c,d,e,f for example). You will need a way for totalTask
@@ -97,9 +97,22 @@ indiRatio(D, OT) :-
 	Utility >= 0. // weakly dominates conflict deal, whose utility is 0.
 	
 //I know when a deal is pareto optimal:
-paretoOptimal(...) //Enter your code here. Consider adding more functions to
+paretoOptimal(D1, D2) :-
+	.findall([OtherD1, OtherD2], (dominates([OtherD1, OtherD2], [D1,D2]) & validDistribution(OtherD1, OtherD2)), [])
+.
+//Enter your code here. Consider adding more functions to
 //solve this problem. For example, given a task, which addresses will the other agent have to do?
 //Hint: .findall function might be useful here. (See below for details)
+
+dominates([DA1,DA2], [DB1,DB2]):-
+	originalTask(OT) &
+	theirOriginalTask(TOT) &
+	computeUtility(DA1, OT, UA1) &
+	computeUtility(DA2, TOT, UA2) &
+	computeUtility(DB1, OT, UB1) &
+	computeUtility(DB2, TOT, UB2) &
+	UA1 >= UB1 & UA2 >= UB2 & (UA1 > UB1 | UA2 > UB2) // is this OR correct??
+.
 
 //I know what a deal I can offer up for negotiations, is like.
 //If you want to check if you did a part correct, for example, validDistribution,
@@ -112,7 +125,8 @@ goodDeal([MySide,TheirSide]) :-
 	theirOriginalTask(TOT) & //The agent should have received this info from the other agent.
 	indiRatio(MySide,OT) & //I am not going to consider deals worse than the conflict deal.
 	indiRatio(TheirSide,TOT) & //The other agent is always going to refuse deals worse than the conflict deal. No point in considering them.
-	paretoOptimal(MySide,TheirSide). 
+	paretoOptimal(MySide,TheirSide)
+	. 
 	
 //I can find all possible deals for negotiations.
 setOfDeals(SetOfDeals) :-
@@ -186,3 +200,8 @@ sortSet([[MySide,TheirSide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 	.print("Agent 1 offers following deals ", SortedSet);
 	+theSetOfNegotiationDeals(SortedSet); //Remember the current negotiation deals.
 	!getBetterDeal.
+
++!getBetterDeal 
+	: true 
+	<- true
+	.

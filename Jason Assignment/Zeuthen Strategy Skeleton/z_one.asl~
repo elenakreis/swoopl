@@ -79,14 +79,22 @@ validDistribution(OneSide,OtherSide) :-
 	uniqueSets(OneSide,OtherSide).
 
 //Checking if the two task sets are indeed the total task. 
-checkTotalTask(...)//enter your code here.
-
+checkTotalTask(D1, D2, TotalSet):-
+	.union(D1, D2, TotalSet).
 
 //Checking if two sets are unique. 
-uniqueSets(...)//enter your code here.
+uniqueSets(D1, D2):-
+	.intersection(D1, D2, []).
+	
+computeUtility(D, OT, Utility) :-
+	cost(OT, C_OT) &
+	cost(D, C_D) &
+	Utility = C_OT - C_D.
 	
 //I know when a task is individual rational.
-indiRatio(...) //enter your code here.
+indiRatio(D, OT) :-
+	computeUtility(D, OT, Utility) &
+	Utility >= 0. // weakly dominates conflict deal, whose utility is 0.
 	
 //I know when a deal is pareto optimal:
 paretoOptimal(...) //Enter your code here. Consider adding more functions to

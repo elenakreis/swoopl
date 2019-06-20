@@ -97,11 +97,22 @@ indiRatio(D, OT) :-
 	Utility >= 0. // weakly dominates conflict deal, whose utility is 0.
 	
 //I know when a deal is pareto optimal:
-paretoOptimal(...) //Enter your code here. Consider adding more functions to
+paretoOptimal(D1, D2) :-
+	.findall([OtherD1, OtherD2], (dominates([OtherD1, OtherD2], [D1,D2]) & validDistribution(OtherD1, OtherD2)), [])
+.
+//Enter your code here. Consider adding more functions to
 //solve this problem. For example, given a task, which addresses will the other agent have to do?
 //Hint: .findall function might be useful here. (See below for details)
 
-
+dominates([DA1,DA2], [DB1,DB2]):-
+	originalTask(OT) &
+	theirOriginalTask(TOT) &
+	computeUtility(DA1, TOT, UA1) &
+	computeUtility(DA2, OT, UA2) &
+	computeUtility(DB1, TOT, UB1) &
+	computeUtility(DB2, OT, UB2) &
+	UA1 >= UB1 & UA2 >= UB2 & (UA1 > UB1 | UA2 > UB2) // is this OR correct??
+.
 //I know what conditions deal I can offer up for negotiations needs to fulfill.
 //If you want to check if you did a part correct, for example, validDistribution,
 //comment the other parts out. 
@@ -186,4 +197,8 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 	.print("Agent 2 offers following deals ", SortedSet);
 	+theSetOfNegotiationDeals(SortedSet); //Remember the current negotiation deals.
 	!getBetterDeal.
-
+	
++!getBetterDeal 
+	: true 
+	<- true
+	.
