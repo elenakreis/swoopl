@@ -213,18 +213,39 @@ wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 +!getBetterDeal 
 	: not firstRoundFinished  // they haven't proposed a deal yet.
 	<- 
+	.print("Start first round!");
 	?theSetOfNegotiationDeals([BestDeal|Rest]);
 	.send(z_two, tell, theirDeal(BestDeal)); // send them our best deal
 	+myDeal(BestDeal);
 	+firstRoundFinished;
+	.print("I sent my deal");
 	!getBetterDeal
 	.
 	
 +!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk
+	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk & .random(N) & N>0.5
 	<- 
 	// flip coin
-	.print("flip coin");
+	.print("flip coin -  i concede");
+	?theSetOfNegotiationDeals(NegotiationDeals);
+	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|_]);
+	// UPDATE negotiation deals here?????
+	//?sortSet(Deals, [NextBestDeal|_]); // sorting doesn't work... is it necessary?
+	//.send(z_two, untell, theirDeal);
+	.send(z_two, tell, theirDeal(NextBestDeal));
+	-+myDeal(NextBestDeal);
+	.send(z_two, tell, coinFlipped(z_one));
+	!getBetterDeal
+	.
+	
++!getBetterDeal 
+	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk 
+	<- 
+	// flip coin
+	.print("flip coin -  they concede");
+	.send(z_two, tell, coinFlipped(z_two));
+	-theirDeal;
+	//.wait({+theirDeal});
 	!getBetterDeal
 	.
 	
@@ -233,6 +254,8 @@ wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 	<- 
 	// send same deal
 	.print("send same deal");
+	-theirDeal;
+	//.wait({+theirDeal});
 	!getBetterDeal
 	.
 
@@ -241,18 +264,26 @@ wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 +!getBetterDeal 
 	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk < TheirWrisk
 	<- 
+	.print("concede");
 	?theSetOfNegotiationDeals(NegotiationDeals);
 	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|_]);
 	// UPDATE negotiation deals here?????
 	//?sortSet(Deals, [NextBestDeal|_]); // sorting doesn't work... is it necessary?
-	.send(z_two, untell, theirDeal);
+	//.send(z_two, untell, theirDeal);
 	.send(z_two, tell, theirDeal(NextBestDeal));
+	-+myDeal(NextBestDeal);
 	!getBetterDeal
 	.
 	
-+!getBetterDeal 
-	: true  
-	<- 
-	.wait({+theirDeal(D)}); 
-	!getBetterDeal
-	.
+//+!getBetterDeal 
+//	: not theirDeal  & firstRoundFinished
+//	<- 
+//	.print("Waiting for their deal...");
+//	.wait({+theirDeal}); 
+//	?theirDeal(TheirDeal);
+//	.print("Their deal has arrived: ", TheirDeal);
+//	!getBetterDeal
+//	.
++!getBetterDeal : true
+	<-
+	!getBetterDeal.

@@ -79,6 +79,7 @@ validDistribution(OneSide,OtherSide) :-
 	uniqueSets(OneSide,OtherSide).
 
 //Checking if the two task sets are indeed the total task. 
+//Checking if the two task sets are indeed the total task. 
 checkTotalTask(D1, D2, TotalSet):-
 	.union(D1, D2, TotalSet).
 
@@ -111,8 +112,9 @@ dominates([DA1,DA2], [DB1,DB2]):-
 	computeUtility(DA2, OT, UA2) &
 	computeUtility(DB1, TOT, UB1) &
 	computeUtility(DB2, OT, UB2) &
-	UA1 >= UB1 & UA2 >= UB2 & (UA1 > UB1 | UA2 > UB2) // is this OR correct??
+	UA1 >= UB1 & UA2 >= UB2 & (UA1 > UB1 | UA2 > UB2)
 .
+
 //I know what conditions deal I can offer up for negotiations needs to fulfill.
 //If you want to check if you did a part correct, for example, validDistribution,
 //comment the other parts out. 
@@ -163,6 +165,14 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,[CurTheirHigh,CurMyHigh],SetO
 sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals) :-
 	sortSet(OtherDeals,ToBeSorted,CurBestDeal,SetOfSortedDeals).
 
+/* Helper functions */	
+acceptableDeal([_, TheirD2]):-
+	myDeal([_, MyD2]) &
+	originialTask(OT) &
+	computeUtility(MyD2, OT, U_MyD) &
+	computeUtility(TheirD2, OT, U_TheirD) &
+	U_TheirD >= U_MyD.
+	
 wrisk(MyWrisk, TheirWrisk) :-
 	myDeal([MyD1, MyD2]) &
 	theirDeal([TheirD1, TheirD2]) &
@@ -172,12 +182,13 @@ wrisk(MyWrisk, TheirWrisk) :-
 	computeUtility(MyD2, OT, U_MyD2) &
 	computeUtility(TheirD1, TOT, U_TheirD1) &
 	computeUtility(TheirD2, OT, U_TheirD2) &
-	MyWrisk = (U_MyD2 - U_TheirD2) / U_MyD2 & // CHANGE FOR AGENTS
-	TheirWrisk = (U_TheirD1 - U_MyD1) / U_TheirD1
-.
+	MyWrisk = (U_MyD2 - U_TheirD2) / U_MyD2 & 
+	TheirWrisk = (U_TheirD1 - U_MyD1) / U_TheirD1.
+	
 /* Initial goals */
 //I hate the deal I have been given. I want a better one! Perhaps I can ask z_one...
-!getBetterDeal.
+!startUp.
+
 
 
 
@@ -195,7 +206,7 @@ wrisk(MyWrisk, TheirWrisk) :-
 //It is recommended to first finish negotiations when you get to this point. After,
 //you will need to come back to this function to create a way to reason what the total
 //task set is given originalTask and theirOriginalTask, as well converse about the costs and remember these.
-+!getBetterDeal
++!startUp
 	: not theirOriginalTask(Task)
 	<-
 	.send(z_one, askOne, originalTask(TheirTask), originalTask(Answer)); //Asking the other agent what their original task is.
@@ -207,91 +218,71 @@ wrisk(MyWrisk, TheirWrisk) :-
 	?sortedSet(Deals,SortedSet); //All good deals are now sorted.
 	.print("Agent 2 offers following deals ", SortedSet);
 	+theSetOfNegotiationDeals(SortedSet); //Remember the current negotiation deals.
-	!getBetterDeal.
-	
+	!firstRound.
 
-+!getBetterDeal 
-	: not firstRoundFinished  // they haven't proposed a deal yet.
-	<- 
++!firstRound
+	: true
+	<-
 	.print("Start first round!");
 	?theSetOfNegotiationDeals([BestDeal|Rest]);
-	.send(z_one, tell, theirDeal(BestDeal)); // send them our best deal
+	.send(z_one, tell, theirDeal(BestDeal));
 	+myDeal(BestDeal);
-	+firstRoundFinished;
-	.print("I sent my deal");
-	!getBetterDeal
-	.
-	
-	
-+!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk & not coinFlipped
-	<- 
-	// flip coin
-	.print("flip coin");
-	//.wait({+coinFlipped});
-	!getBetterDeal
-	.
-+!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk & coinFlipped(z_one)
-	<- 
-	// flip coin
-	.print("flip coin - they concede");
-	// check if we like the deal 
-	-coinFlipped;
-	!getBetterDeal
-	.
-	
-+!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk & coinFlipped(z_two)
-	<- 
-	// flip coin
-	.print("flip coin - i concede");
-	?theSetOfNegotiationDeals(NegotiationDeals);
-	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|_]);
-	// UPDATE negotiation deals here?????
-	//?sortSet(Deals, [NextBestDeal|_]); // sorting doesn't work... is it necessary?
-	//.send(z_one, untell, theirDeal);
-	.send(z_one, tell, theirDeal(NextBestDeal));
-	-+myDeal(NextBestDeal);
-	-coinFlipped;
-	!getBetterDeal
-	.
+	!checkAccept.
 
-	
-+!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk > TheirWrisk
-	<- 
-	// send same deal
-	.print("send same deal");
-	-theirDeal;
-	//.wait({+theirDeal});
-	!getBetterDeal
-	.
-
-+!getBetterDeal 
-	: theirDeal(TheirDeal)  & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk < TheirWrisk
-	<- 
-	// concede
-	.print("concede");
-	?theSetOfNegotiationDeals(NegotiationDeals);
-	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|_]);
-	// UPDATE negotiation deals here?????
-	//?sortSet(Deals, [NextBestDeal|_]); // sorting doesn't work... is it necessary?
-	//.send(z_one, untell, theirDeal);
-	.send(z_one, tell, theirDeal(NextBestDeal));
-	-+myDeal(NextBestDeal);
-	!getBetterDeal
-	.
-	
-//+!getBetterDeal 
-//	: not theirDeal  & firstRoundFinished
-//	<- 
-//	.print("Waiting for their deal...");
-//	.wait({+theirDeal}); 
-//	?theirDeal(TheirDeal);
-//	.print("Their deal has arrived: ", TheirDeal);
-//	!getBetterDeal
-//	.
-+!getBetterDeal : true
+// if we don't know their deal yet, wait a bit and try again
++!checkAccept
+	: not theirDeal(TheirDeal)
 	<-
+	.wait(500);
+	!checkAccept.
+	
++!checkAccept
+	: theirDeal(TheirDeal) & acceptableDeal(TheirDeal)
+	<-
+	// accept their deal
+	.print("Agent 2 accepts");
+	.send(z_one, tell, acceptedDeal(TheirDeal));
+	+acceptedDeal(TheirDeal).
+	
++acceptedDeal(Deal)
+	: true
+	<-
+	.print("Agreement reached ", Deal);
+	.drop_all_intentions.
+
++!checkAccept
+	: theirDeal(TheirDeal) & not acceptableDeal(TheirDeal)
+	<- 
+	.print("Agent 2 doesn't accept");
 	!getBetterDeal.
+
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk 
+	<- 
+	.print("Agent 2 waits for coinflip").
+	
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk < TheirWrisk 
+	<- 
+	.print("Agent 2 concedes");
+	!concede.
+
+// Superfluous function - used for printing
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk > TheirWrisk 
+	<- 
+	.print("Agent 2 sends same deal").	
+
++!concede
+	: true
+	<- 
+	.print("Conceding");
+	?theSetOfNegotiationDeals(NegotiationDeals);
+	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|OtherDeals]);
+	.print("Deals: ", NextBestDeal, OtherDeals);
+	.send(z_one, untell, theirDeal(D));
+	.send(z_one, tell, theirDeal(NextBestDeal));
+	-+myDeal(NextBestDeal);
+	.print("Agent 2 proposes: ", NextBestDeal);
+	.send(z_one, achieve, checkAccept).
+	
