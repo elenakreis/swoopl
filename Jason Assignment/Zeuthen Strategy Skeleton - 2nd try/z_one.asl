@@ -163,7 +163,7 @@ sortSet([[MySide,TheirSide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 /* Helper functions */
 acceptableDeal([TheirD1, _]):-
 	myDeal([MyD1, _]) &
-	originialTask(OT) &
+	originalTask(OT) &
 	computeUtility(MyD1, OT, U_MyD) &
 	computeUtility(TheirD1, OT, U_TheirD) &
 	U_TheirD >= U_MyD.
@@ -278,7 +278,7 @@ wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 // There is at least one item to suggest otherwise
 +!concede
 	: theSetOfNegotiationDeals(NegotiationDeals) &	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) 
-	& MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), Deals) & sortedSet(Deals, [NextBestDeal|_]) & .print("DEALS: ", Deals)
+	& (MyNewWrisk > TheirNewWrisk | MyNewWrisk = 0 & TheirWrisk = 0) & .member(Deal, NegotiationDeals), Deals) & sortedSet(Deals, [NextBestDeal|_]) 
 	<- 
 	.print("Conceding");
 	?myDeal(OldDeal);
