@@ -173,8 +173,7 @@ acceptableDeal([_, TheirD2]):-
 	computeUtility(TheirD2, OT, U_TheirD) &
 	U_TheirD >= U_MyD.
 	
-wrisk(MyWrisk, TheirWrisk) :-
-	myDeal([MyD1, MyD2]) &
+wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 	theirDeal([TheirD1, TheirD2]) &
 	originalTask(OT) &
 	theirOriginalTask(TOT) &
@@ -247,7 +246,7 @@ wrisk(MyWrisk, TheirWrisk) :-
 +acceptedDeal(Deal)
 	: true
 	<-
-	.print("Agreement reached ", Deal);
+	.print("Final result ", Deal);
 	.drop_all_intentions.
 
 +!checkAccept
@@ -273,16 +272,27 @@ wrisk(MyWrisk, TheirWrisk) :-
 	<- 
 	.print("Agent 2 sends same deal").	
 
+// There is at least one item to suggest otherwise
 +!concede
-	: true
+	: theSetOfNegotiationDeals(NegotiationDeals) &	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) 
+	& MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), Deals) & sortedSet(Deals, [NextBestDeal|_]) & .print("DEALS: ", Deals)
 	<- 
 	.print("Conceding");
-	?theSetOfNegotiationDeals(NegotiationDeals);
-	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|OtherDeals]);
-	.print("Deals: ", NextBestDeal, OtherDeals);
-	.send(z_one, untell, theirDeal(D));
+	?myDeal(OldDeal);
+	.send(z_one, untell, theirDeal(OldDeal));
 	.send(z_one, tell, theirDeal(NextBestDeal));
 	-+myDeal(NextBestDeal);
 	.print("Agent 2 proposes: ", NextBestDeal);
 	.send(z_one, achieve, checkAccept).
+	
+// There are no more deals to suggest
++!concede
+	: theSetOfNegotiationDeals(NegotiationDeals) &	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) 
+	& MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [])
+	<- 
+	.print("Conflict!");
+	?originalTask(OT);
+	?theirOriginalTask(TOT);
+	.send(z_one, tell, acceptedDeal([TOT,OT]));
+	+acceptedDeal([TOT,OT]).
 	

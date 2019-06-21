@@ -79,20 +79,41 @@ validDistribution(OneSide,OtherSide) :-
 	uniqueSets(OneSide,OtherSide).
 
 //Checking if the two task sets are indeed the total task. 
-checkTotalTask(...)//enter your code here.
-
+//Checking if the two task sets are indeed the total task. 
+checkTotalTask(D1, D2, TotalSet):-
+	.union(D1, D2, TotalSet).
 
 //Checking if two sets are unique. 
-uniqueSets(...)//enter your code here.
+uniqueSets(D1, D2):-
+	.intersection(D1, D2, []).
+	
+computeUtility(D, OT, Utility) :-
+	cost(OT, C_OT) &
+	cost(D, C_D) &
+	Utility = C_OT - C_D.
 	
 //I know when a task is individual rational.
-indiRatio(...) //enter your code here.
+indiRatio(D, OT) :-
+	computeUtility(D, OT, Utility) &
+	Utility >= 0. // weakly dominates conflict deal, whose utility is 0.
 	
 //I know when a deal is pareto optimal:
-paretoOptimal(...) //Enter your code here. Consider adding more functions to
+paretoOptimal(D1, D2) :-
+	.findall([OtherD1, OtherD2], (dominates([OtherD1, OtherD2], [D1,D2]) & validDistribution(OtherD1, OtherD2)), [])
+.
+//Enter your code here. Consider adding more functions to
 //solve this problem. For example, given a task, which addresses will the other agent have to do?
 //Hint: .findall function might be useful here. (See below for details)
 
+dominates([DA1,DA2], [DB1,DB2]):-
+	originalTask(OT) &
+	theirOriginalTask(TOT) &
+	computeUtility(DA1, TOT, UA1) &
+	computeUtility(DA2, OT, UA2) &
+	computeUtility(DB1, TOT, UB1) &
+	computeUtility(DB2, OT, UB2) &
+	UA1 >= UB1 & UA2 >= UB2 & (UA1 > UB1 | UA2 > UB2)
+.
 
 //I know what conditions deal I can offer up for negotiations needs to fulfill.
 //If you want to check if you did a part correct, for example, validDistribution,
@@ -144,9 +165,29 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,[CurTheirHigh,CurMyHigh],SetO
 sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals) :-
 	sortSet(OtherDeals,ToBeSorted,CurBestDeal,SetOfSortedDeals).
 
+/* Helper functions */	
+acceptableDeal([_, TheirD2]):-
+	myDeal([_, MyD2]) &
+	originialTask(OT) &
+	computeUtility(MyD2, OT, U_MyD) &
+	computeUtility(TheirD2, OT, U_TheirD) &
+	U_TheirD >= U_MyD.
+	
+wrisk(MyWrisk, TheirWrisk) :-
+	myDeal([MyD1, MyD2]) &
+	theirDeal([TheirD1, TheirD2]) &
+	originalTask(OT) &
+	theirOriginalTask(TOT) &
+	computeUtility(MyD1, TOT, U_MyD1) &
+	computeUtility(MyD2, OT, U_MyD2) &
+	computeUtility(TheirD1, TOT, U_TheirD1) &
+	computeUtility(TheirD2, OT, U_TheirD2) &
+	MyWrisk = (U_MyD2 - U_TheirD2) / U_MyD2 & 
+	TheirWrisk = (U_TheirD1 - U_MyD1) / U_TheirD1.
+	
 /* Initial goals */
 //I hate the deal I have been given. I want a better one! Perhaps I can ask z_one...
-!getBetterDeal.
+!startUp.
 
 
 
@@ -165,7 +206,7 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 //It is recommended to first finish negotiations when you get to this point. After,
 //you will need to come back to this function to create a way to reason what the total
 //task set is given originalTask and theirOriginalTask, as well converse about the costs and remember these.
-+!getBetterDeal
++!startUp
 	: not theirOriginalTask(Task)
 	<-
 	.send(z_one, askOne, originalTask(TheirTask), originalTask(Answer)); //Asking the other agent what their original task is.
@@ -177,5 +218,71 @@ sortSet([[TheirSide,MySide]|OtherDeals],ToBeSorted,CurBestDeal,SetOfSortedDeals)
 	?sortedSet(Deals,SortedSet); //All good deals are now sorted.
 	.print("Agent 2 offers following deals ", SortedSet);
 	+theSetOfNegotiationDeals(SortedSet); //Remember the current negotiation deals.
+	!firstRound.
+
++!firstRound
+	: true
+	<-
+	.print("Start first round!");
+	?theSetOfNegotiationDeals([BestDeal|Rest]);
+	.send(z_one, tell, theirDeal(BestDeal));
+	+myDeal(BestDeal);
+	!checkAccept.
+
+// if we don't know their deal yet, wait a bit and try again
++!checkAccept
+	: not theirDeal(TheirDeal)
+	<-
+	.wait(500);
+	!checkAccept.
+	
++!checkAccept
+	: theirDeal(TheirDeal) & acceptableDeal(TheirDeal)
+	<-
+	// accept their deal
+	.print("Agent 2 accepts");
+	.send(z_one, tell, acceptedDeal(TheirDeal));
+	+acceptedDeal(TheirDeal).
+	
++acceptedDeal(Deal)
+	: true
+	<-
+	.print("Agreement reached ", Deal);
+	.drop_all_intentions.
+
++!checkAccept
+	: theirDeal(TheirDeal) & not acceptableDeal(TheirDeal)
+	<- 
+	.print("Agent 2 doesn't accept");
 	!getBetterDeal.
 
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk = TheirWrisk 
+	<- 
+	.print("Agent 2 waits for coinflip").
+	
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk < TheirWrisk 
+	<- 
+	.print("Agent 2 concedes");
+	!concede.
+
+// Superfluous function - used for printing
++!getBetterDeal
+	: theirDeal(TheirDeal) & myDeal(MyDeal) & wrisk(MyDeal, MyWrisk, TheirWrisk) & MyWrisk > TheirWrisk 
+	<- 
+	.print("Agent 2 sends same deal").	
+
++!concede
+	: true
+	<- 
+	.print("Conceding");
+	?theSetOfNegotiationDeals(NegotiationDeals);
+	.findall(Deal, wrisk(Deal, MyNewWrisk, TheirNewWrisk) & MyNewWrisk > TheirNewWrisk & .member(Deal, NegotiationDeals), [NextBestDeal|OtherDeals]);
+	.print("Deals: ", NextBestDeal, OtherDeals);
+	.send(z_one, untell, theirDeal(D));
+	.send(z_one, tell, theirDeal(NextBestDeal));
+	-+myDeal(NextBestDeal);
+	.print("Agent 2 proposes: ", NextBestDeal);
+	.send(z_one, achieve, checkAccept).
+	
