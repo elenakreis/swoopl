@@ -75,7 +75,8 @@ originalTask([d,e]).
 // having the total task set (b,c,d,e,f for example). You will need a way for totalTask
 //to get the total task set when agents need to calculate the total task set by themselves.
 validDistribution(OneSide,OtherSide) :-
-	checkTotalTask(OneSide,OtherSide,[b,c,d,e,f]) & //Adjust [b,c,d,e,f] with a totalTask belief later on in the assignment.
+	totalSet(TotalSet) &
+	checkTotalTask(OneSide,OtherSide,TotalSet) & 
 	uniqueSets(OneSide,OtherSide).
 
 //Checking if the two task sets are indeed the total task. 
@@ -213,6 +214,9 @@ wrisk([MyD1, MyD2], MyWrisk, TheirWrisk) :-
 	//By specifying originalTask in the return, we can seperate Answer from the rest and make a new belief with it.
 	+theirOriginalTask(Answer);
 	.print("Agent 1 told Agent 2 their task was ", Answer);
+	?originalTask(MyTask);
+	.union(MyTask,Answer,TotalSet);
+	+totalSet(TotalSet);
 	?setOfDeals(Deals); //Finding all good deals, but they are unsorted.
 	?sortedSet(Deals,SortedSet); //All good deals are now sorted.
 	.print("Agent 2 offers following deals ", SortedSet);
